@@ -3,8 +3,9 @@ import time
 import socket
 from PyQt5 import QtCore, QtWidgets, QtGui
 
-PROXY = ['178.62.249.204', '161.35.198.236']
+PROXY = ['fs.fabiobruno.ru', 'fs1.fabiobruno.ru']
 PORTS = [33247, 18071, 59601, 27522]
+TIMEOUT = 30
 
 
 class QWindow(QtWidgets.QWidget):
@@ -48,7 +49,7 @@ class QWindow(QtWidgets.QWidget):
             element.show()
 
     def create_ui(self):
-        self.setWindowTitle('Viaborsa')
+        self.setWindowTitle('Viaborsa Connector')
         self.setWindowIcon(QtGui.QIcon('desktop.ico'))
         self.setFixedSize(320, 200)
         self.set_geometry()
@@ -63,10 +64,11 @@ class QWindow(QtWidgets.QWidget):
 
 
 class Knocker(object):
-    def __init__(self, addr, ports: list, delay):
+    def __init__(self, addr, ports: list, delay, qwindow: QWindow):
         self.ports = ports
         self.addr = addr
         self.delay = delay
+        self.qwindow = qwindow
 
     def knock(self):
         last_index = len(self.ports) - 1
@@ -75,10 +77,11 @@ class Knocker(object):
             s.setblocking(False)
             socket_address = (self.addr, int(port))
             s.sendto(b'', socket_address)
-            print('Sent to', self.addr, port)
             s.close()
             if self.delay and i != last_index:
                 time.sleep(self.delay)
+        self.qwindow.textLine.setText(f'Connection is open')
+        self.qwindow.textLine.update()
 
 
 class Timer(QtCore.QThread):
@@ -88,9 +91,9 @@ class Timer(QtCore.QThread):
         super().__init__()
 
     def run(self):
-        for i in range(11):
+        for i in range(TIMEOUT+1):
             self.sleep(1)
-            self.signal.emit(10-i)
+            self.signal.emit(TIMEOUT-i)
 
 
 class Connector:
@@ -101,11 +104,11 @@ class Connector:
     def __call__(self, *args, **kwargs):
         proxy = PROXY[0] if self.qwindow.fsButton.isChecked() else PROXY[1]
         ports = PORTS
-        knock = Knocker(proxy, ports, delay=0.5)
+        knock = Knocker(proxy, ports, delay=0.5, qwindow=self.qwindow)
         knock.knock()
         if not self.thread:
             self.thread = Timer()
-            qw.lcdTimer.display(10)
+            qw.lcdTimer.display(TIMEOUT)
             qw.connectButton.setDisabled(True)
             self.thread.signal.connect(self.on_change)
             self.thread.finished.connect(self.on_finished)
@@ -116,11 +119,12 @@ class Connector:
         self.thread.signal.disconnect(self.on_change)
         self.thread.finished.disconnect(self.on_finished)
         self.thread = None
+        self.qwindow.textLine.setText('')
 
     @staticmethod
-    def on_change(time):
-        qw.lcdTimer.value = time
-        qw.lcdTimer.display(time)
+    def on_change(timer):
+        qw.lcdTimer.value = timer
+        qw.lcdTimer.display(timer)
 
 
 if __name__ == '__main__':
