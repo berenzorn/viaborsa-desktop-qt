@@ -1,11 +1,30 @@
 import sys
 import time
 import socket
+from configparser import ConfigParser
 from PyQt5 import QtCore, QtWidgets, QtGui
 
-PROXY = ['fs.fabiobruno.ru', 'fs1.fabiobruno.ru']
-PORTS = [33247, 18071, 59601, 27522]
-TIMEOUT = 30
+# config.ini
+# [params]
+# proxy = server-1, server-2
+# ports = port1, port2, port3, port4
+# timeout = secs
+
+
+def read_config():
+    config = ConfigParser()
+    config.read('config.ini')
+    proxy = config.get('params', 'proxy')
+    ports = config.get('params', 'ports')
+    timeout = config.get('params', 'timeout')
+    #      0      1      2
+    return proxy, ports, timeout
+
+
+creds = read_config()
+PROXY = creds[0].split(", ")
+PORTS = creds[1].split(", ")
+TIMEOUT = int(creds[2])
 
 
 class QWindow(QtWidgets.QWidget):
